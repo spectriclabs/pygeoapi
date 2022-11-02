@@ -480,8 +480,8 @@ class ElasticsearchProvider(BaseProvider):
             id_ = doc['_source'][self.id_field]
             if 'type' not in doc['_source']:
                 feature_['id'] = id_
-                feature_['type'] = 'Feature'
-            feature_['geometry'] = doc['_source'].get('geometry')
+                feature_['type'] = 'Feature'            
+            feature_['geometry'] = self.convert_geometry(doc)
             feature_['properties'] = {}
             for key, value in doc['_source'].items():
                 if key == 'geometry':
@@ -515,6 +515,20 @@ class ElasticsearchProvider(BaseProvider):
             return feature_thinned
         else:
             return feature_
+
+    def convert_geometry(self, doc):
+        def getfield(field):
+            val = doc['_source']
+            for fld in field.split('.'):
+                val = None if val is None else val.get(fld)
+            return val
+        try:
+            lat = float(getfield(self.x_field))
+            lon = float(getfield(self.y_field))
+            return { 'coordinates': [ lat, lon],
+                      'type': 'Point' }
+        except:
+            return doc['_source'].get('geometry')
 
     def mask_prop(self, property_name):
         """
