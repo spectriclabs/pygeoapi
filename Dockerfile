@@ -94,6 +94,7 @@ ENV TZ=${TZ} \
       libsqlite3-mod-spatialite \
       locales \
       locales-all \
+      curl \
       python3-dateutil \
       python3-distutils \
       python3-flask \
