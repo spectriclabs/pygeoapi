@@ -1,0 +1,45 @@
+name: "Build and Publish Test Docker Image"
+
+on:
+  workflow_run:
+    workflows: ["Build"]
+    types: [completed]
+    branches: ['spectric', 
+               'master']
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-and-push-test-image:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Create timestamp env
+      run: echo "timestamp=$(date --utc +%Y%m%d%H%M%S)" >> $GITHUB_ENV
+      shell: bash
+    - uses: actions/checkout@v2
+    - uses: docker/login-action@v2
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - uses: docker/metadata-action@v4
+      id: meta
+      with:
+        images: ${{ env.REGISTRY }}/spectriclabs/pygeoapi
+        tags: |
+          type=raw,value=${{ env.timestamp }}
+          type=raw,value=test
+    - uses: docker/build-push-action@v3.1.1
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
