@@ -28,7 +28,7 @@
 #
 # =================================================================
 
-""" Flask module providing the route paths to the api"""
+"""Flask module providing the route paths to the api"""
 
 import os
 
@@ -85,8 +85,11 @@ BLUEPRINT = Blueprint('pygeoapi', __name__, static_folder=STATIC_FOLDER)
 
 # CORS: optionally enable from config.
 if CONFIG['server'].get('cors', False):
-    from flask_cors import CORS
-    CORS(APP)
+    try:
+        from flask_cors import CORS
+        CORS(APP)
+    except ModuleNotFoundError:
+        print('Python package flask-cors required for CORS support')
 
 initialize_flask_server_debugger_if_needed()
 
@@ -95,7 +98,7 @@ APP.config['JSONIFY_PRETTYPRINT_REGULAR'] = CONFIG['server'].get(
 
 api_ = API(CONFIG)
 
-OGC_SCHEMAS_LOCATION = CONFIG['server'].get('ogc_schemas_location', None)
+OGC_SCHEMAS_LOCATION = CONFIG['server'].get('ogc_schemas_location')
 
 if (OGC_SCHEMAS_LOCATION is not None and
         not OGC_SCHEMAS_LOCATION.startswith('http')):
@@ -205,7 +208,7 @@ def collection_queryables(collection_id=None):
 
 @BLUEPRINT.route('/collections/<path:collection_id>/items',
                  methods=['GET', 'POST'])
-@BLUEPRINT.route('/collections/<path:collection_id>/items/<item_id>',
+@BLUEPRINT.route('/collections/<path:collection_id>/items/<path:item_id>',
                  methods=['GET', 'PUT', 'DELETE'])
 def collection_items(collection_id, item_id=None):
     """
@@ -295,6 +298,7 @@ def get_collection_tiles(collection_id=None):
         request, collection_id))
 
 
+@BLUEPRINT.route('/collections/<path:collection_id>/tiles/<tileMatrixSetId>')
 @BLUEPRINT.route('/collections/<path:collection_id>/tiles/<tileMatrixSetId>/metadata')  # noqa
 def get_collection_tiles_metadata(collection_id=None, tileMatrixSetId=None):
     """
@@ -326,6 +330,29 @@ def get_collection_tiles_data(collection_id=None, tileMatrixSetId=None,
     """
     return get_response(api_.get_collection_tiles_data(
         request, collection_id, tileMatrixSetId, tileMatrix, tileRow, tileCol))
+
+
+@BLUEPRINT.route('/collections/<collection_id>/map')
+@BLUEPRINT.route('/collections/<collection_id>/styles/<style_id>/map')
+def collection_map(collection_id, style_id=None):
+    """
+    OGC API - Maps map render endpoint
+
+    :param collection_id: collection identifier
+    :param style_id: style identifier
+
+    :returns: HTTP response
+    """
+
+    headers, status_code, content = api_.get_collection_map(
+        request, collection_id, style_id)
+
+    response = make_response(content, status_code)
+
+    if headers:
+        response.headers = headers
+
+    return response
 
 
 @BLUEPRINT.route('/processes')
